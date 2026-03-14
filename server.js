@@ -55,7 +55,8 @@ function createRoom(lang) {
 function broadcastRoomState(roomCode) {
   const room = rooms[roomCode];
   if (!room) return;
-  io.to(roomCode).emit('game_update', room);
+  const { timer, ...safeRoom } = room;
+  io.to(roomCode).emit('game_update', safeRoom);
 }
 
 function autoStopRound(roomCode) {
@@ -136,17 +137,17 @@ io.on('connection', (socket) => {
     }
 
     socket.join(room.code);
+    socket.roomCode = room.code;
     room.players.push({ id: socket.id, name });
     room.scores[socket.id] = 0;
 
     if (!room.hostId) room.hostId = socket.id;
 
-    socket.emit('game_update', room);
     broadcastRoomState(room.code);
   });
 
   socket.on('start_game', () => {
-    const roomCode = Array.from(socket.rooms)[1];
+    const roomCode = socket.roomCode;
     const room = rooms[roomCode];
 
     if (!room || room.hostId !== socket.id) {
@@ -158,7 +159,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('submit_answers', ({ answers }) => {
-    const roomCode = Array.from(socket.rooms)[1];
+    const roomCode = socket.roomCode;
     const room = rooms[roomCode];
 
     if (!room || room.state !== 'playing') {
@@ -170,21 +171,27 @@ io.on('connection', (socket) => {
   });
 
   socket.on('stop_game', () => {
-    const roomCode = Array.from(socket.rooms)[1];
+    const roomCode = socket.roomCode;
     const room = rooms[roomCode];
 
     if (!room) return;
 
     room.isActive = false;
+    clearTimeout(room.timer);
     io.to(roomCode).emit('stop_round');
     setTimeout(() => judgeAndBroadcast(roomCode), 1000);
   });
 
   socket.on('next_round', () => {
-    const roomCode = Array.from(socket.rooms)[1];
+    const roomCode = socket.roomCode;
     const room = rooms[roomCode];
 
-    if (!room || room.hostId !== socket.id) {
+    if (!room) {
+      socket.emit('error', { message: 'Room not found' });
+      return;
+    }
+
+    if (room.hostId !== socket.id) {
       socket.emit('error', { message: 'Not host' });
       return;
     }
@@ -202,25 +209,27 @@ io.on('connection', (socket) => {
       return;
     }
 
+    room.isActive = false;
+    clearTimeout(room.timer);
     startRound(roomCode);
   });
 
   socket.on('disconnect', () => {
-    for (const code in rooms) {
-      const room = rooms[code];
-      const idx = room.players.findIndex(p => p.id === socket.id);
-      if (idx !== -1) {
-        room.players.splice(idx, 1);
-        if (room.players.length === 0) {
-          clearTimeout(room.timer);
-          delete rooms[code];
-        } else {
-          if (room.hostId === socket.id && room.players.length > 0) {
-            room.hostId = room.players[0].id;
-          }
-          broadcastRoomState(code);
+    const code = socket.roomCode;
+    if (!code || !rooms[code]) return;
+
+    const room = rooms[code];
+    const idx = room.players.findIndex(p => p.id === socket.id);
+    if (idx !== -1) {
+      room.players.splice(idx, 1);
+      if (room.players.length === 0) {
+        clearTimeout(room.timer);
+        delete rooms[code];
+      } else {
+        if (room.hostId === socket.id) {
+          room.hostId = room.players[0].id;
         }
-        break;
+        broadcastRoomState(code);
       }
     }
   });
@@ -229,4 +238,3 @@ io.on('connection', (socket) => {
 server.listen(PORT, () => {
   console.log(`World Words+ server running on port ${PORT}`);
 });
-
