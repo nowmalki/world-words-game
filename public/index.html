@@ -86,11 +86,11 @@
     const socket = io();
     let myId = null, isHost = false, roomCode = null, timerInterval = null, timeLeft = 60;
     const CATEGORIES = [
-      { id: 'country', name: 'Country', nameHe: '××¨×¥' },
-      { id: 'city', name: 'City', nameHe: '×¢××¨' },
-      { id: 'animal', name: 'Animal', nameHe: '××' },
-      { id: 'plant', name: 'Plant', nameHe: '×¦×××' },
-      { id: 'object', name: 'Object', nameHe: '××××' }
+      { id: 'country', name: 'Country', nameHe: '\u05D0\u05E8\u05E5' },
+      { id: 'city', name: 'City', nameHe: '\u05E2\u05D9\u05E8' },
+      { id: 'animal', name: 'Animal', nameHe: '\u05D7\u05D9' },
+      { id: 'plant', name: 'Plant', nameHe: '\u05E6\u05D5\u05DE\u05D7' },
+      { id: 'object', name: 'Object', nameHe: '\u05D3\u05D5\u05DE\u05DD' }
     ];
     let currentLetter = '';
     let currentLang = 'he';
@@ -111,7 +111,6 @@
       errorEl.textContent = '';
       socket.emit('join_room', { name, code: code || null, lang: 'he' });
     });
-
     socket.on('game_update', (room) => {
       roomCode = room.code;
       isHost = room.hostId === myId;
@@ -289,3 +288,4 @@
   </script>
 </body>
 </html>
+
