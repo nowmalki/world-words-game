@@ -111,6 +111,7 @@
       errorEl.textContent = '';
       socket.emit('join_room', { name, code: code || null, lang: 'he' });
     });
+
     socket.on('game_update', (room) => {
       roomCode = room.code;
       isHost = room.hostId === myId;
@@ -147,6 +148,7 @@
     socket.on('results', (data) => {
       showScreen('results');
       document.getElementById('next-round-btn').classList.toggle('hidden', !isHost);
+      document.getElementById('next-round-btn').disabled = false;
       document.getElementById('results-letter').textContent = 'Letter: ' + data.letter;
       renderResults(data);
       renderScoreboard(data.scores);
@@ -178,7 +180,11 @@
       clearInterval(timerInterval);
     });
 
-    document.getElementById('next-round-btn').addEventListener('click', () => { socket.emit('next_round'); });
+    document.getElementById('next-round-btn').addEventListener('click', () => {
+      document.getElementById('next-round-btn').disabled = true;
+      document.getElementById('results-info').textContent = 'Starting next round...';
+      socket.emit('next_round');
+    });
 
     function submitAnswers() {
       const answers = {};
@@ -288,4 +294,3 @@
   </script>
 </body>
 </html>
-
